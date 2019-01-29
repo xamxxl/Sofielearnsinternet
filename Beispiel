@@ -1,0 +1,258 @@
+#include <File.au3>
+#include <Array.au3>
+#include <MsgBoxConstants.au3>
+#include <StringConstants.au3>
+#include <ButtonConstants.au3>
+#include <EditConstants.au3>
+#include <GUIConstantsEx.au3>
+#include <StaticConstants.au3>
+#include <WindowsConstants.au3>
+#include <AutoItConstants.au3>
+
+#Region ### START Koda GUI section ### Form=
+$Form1 = GUICreate("TB-Übertragung", 263, 71, 391, 268)
+GUISetBkColor(0xC0DCC0)
+$Dateipfad = GUICtrlCreateInput("Dateipfad", 120, 16, 137, 21)
+$Label1 = GUICtrlCreateLabel("Daten input", 16, 16, 67, 25)
+$Labelstatus = GUICtrlCreateLabel("Status", 40, 0, 89, 25)
+$Button1 = GUICtrlCreateButton("Start", 80, 40, 89, 25)
+GUISetState(@SW_SHOW)
+HotKeySet("p", "TogglePause")
+HotKeySet("{ESC}", "Terminate")
+HotKeySet("s", "Manipulate")
+#EndRegion ### END Koda GUI section ###
+
+$OldFilePath = "C:\Users\Max\Documents\Timebutler\Autoteile.txt" ;Alte Abteilung
+$NewFilePath = "C:\Users\Max\Documents\Timebutler\AutoteileTest.txt" ;Neue Abteilung
+Func Manipulate() ;Ohne Parameter
+    For $Line = 1 to _FileCountLines($OldFilePath) ;Neue Line
+            $OldLine = FileReadLine($OldFilePath, $Line) ;Line lesen
+			$aString = StringSplit ( $OldLine , "," )
+
+			$Name = $aString[1]
+			$Vorname =  $aString[2]
+			$Grund = $aString[3]
+			$Beginn = $aString[4]
+			$Ende = $aString[5]
+			ToolTip("Status: " & " " & $Name & " " &  $Beginn & " - " &  $Ende  & " Zeile: " & $Line, 0, 0)
+
+   #cs
+
+        Urlaub eintragen
+
+   #ce
+   If $Grund = "Jahresurlaub" Then
+
+   ;Urlaubsantrag
+   MouseClick($MOUSE_CLICK_LEFT, 73, 190, 2)
+   Sleep(300)
+
+   ;Mitarbeiter Auswahl
+   MouseClick($MOUSE_CLICK_LEFT, 545, 219, 2)
+   Sleep(200)
+   Send( $Name & $Vorname )
+   Sleep(300)
+
+   ;Anfang
+   MouseClick($MOUSE_CLICK_LEFT, 521, 258, 2)
+   ;MouseMove ( 264, 236 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 264, 236 )
+   Send($Beginn)
+   ;Send("{Enter}")
+   Send(" {TAB 2} ")
+   Sleep(300)
+
+
+   ;Ende
+    MouseClick($MOUSE_CLICK_LEFT, 523, 297, 2)
+   ;MouseMove ( 530, 270 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 530, 270 )
+   Send($Ende)
+   ;Send("{Enter}")
+   Sleep(300)
+
+
+   ;Bestätigen
+   MouseClick($MOUSE_CLICK_LEFT, 492, 570, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+   FileWriteLine($NewFilePath, $Name & "/" & $Vorname & "/" & $Grund & "/" & $Beginn  & "-" & $Ende & " - Übertragen")
+
+
+   #cs
+
+        Freistellung eintragen
+
+   #ce
+
+Elseif $Grund = "Freistellung" Then
+
+   ;Abwesenheit eintragen
+   MouseClick($MOUSE_CLICK_LEFT, 77, 284, 2)
+   ;MouseMove ( 264, 236 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 264, 236 )
+   Sleep(300)
+
+
+   ;Mitarbeiter auswählen
+    MouseClick($MOUSE_CLICK_LEFT, 583, 221, 2)
+   ;MouseMove ( 530, 270 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 530, 270 )
+   Send($Name & $Vorname)
+   ;Send("{Enter}")
+   Sleep(300)
+
+   ;Abwesenheitstyp auswählen
+   MouseClick($MOUSE_CLICK_LEFT, 561, 258, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Send("Dienstreise")
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+
+   ;Anfang
+   MouseClick($MOUSE_CLICK_LEFT, 522, 297, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Send($Beginn)
+   Send(" {TAB 2} ")
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+   ;Ende
+   MouseClick($MOUSE_CLICK_LEFT, 520, 333, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Send($Beginn)
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+   ;Bestätigen
+   MouseClick($MOUSE_CLICK_LEFT, 485, 551, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+			FileWriteLine($NewFilePath, $Name & "/" & $Vorname & "/" & $Grund & "/" & $Beginn  & "-" & $Ende & " - Übertragen")
+
+   #cs
+
+        Krankheit eintragen
+
+   #ce
+
+   Else
+
+    ;Abwesenheit eintragen
+   MouseClick($MOUSE_CLICK_LEFT, 77, 284, 2)
+   ;MouseMove ( 264, 236 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 264, 236 )
+   Sleep(300)
+
+
+   ;Mitarbeiter auswählen
+    MouseClick($MOUSE_CLICK_LEFT, 583, 221, 2)
+   ;MouseMove ( 530, 270 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 530, 270 )
+   Send($Name & $Vorname)
+   ;Send("{Enter}")
+   Sleep(300)
+
+   ;Abwesenheitstyp auswählen
+   MouseClick($MOUSE_CLICK_LEFT, 561, 258, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Send($Grund)
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+   ;Attest
+   MouseClick($MOUSE_CLICK_LEFT, 555, 296, 2)
+   ;MouseMove ( 264, 236 [, speed = 10] )
+   ;$MOUSE_CLICK_LEFT ("left", 264, 236 )
+   Sleep(300)
+
+
+   ;Anfang
+   MouseClick($MOUSE_CLICK_LEFT, 525, 332, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   Send($Beginn)
+   Send(" {TAB 2} ")
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+   ;Ende
+   MouseClick($MOUSE_CLICK_LEFT, 518, 370, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Send($Beginn)
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+   ;Bestätigen
+   MouseClick($MOUSE_CLICK_LEFT, 493, 589, 2)
+   ;MouseMove ( 446, 519 [, speed = 10] );
+   ;$MOUSE_CLICK_LEFT ("left", 446, 519 )
+   ;Send(" {TAB} ")
+   Sleep(300)
+   ;Send(" {TAB} ")
+
+
+			FileWriteLine($NewFilePath, $Name & "/" & $Vorname & "/" & $Grund & "/" & $Beginn  & "-" & $Ende & " - Übertragen")
+   EndIf
+    Next
+    MsgBox(0,"Fertig","Die Kontrolldatei befindet sich hier:" & $NewFilePath) ;Nachricht
+ EndFunc
+
+Global $g_bPaused = False
+
+While 1
+
+$nMsg = GUIGetMsg()
+Switch $nMsg
+Case $GUI_EVENT_CLOSE
+   Exit
+
+Func TogglePause()
+    $g_bPaused = Not $g_bPaused
+    While $g_bPaused
+        Sleep(100)
+        ToolTip('Script is "Paused"', 0, 0)
+    WEnd
+    ToolTip("")
+EndFunc   ;==>TogglePause
+
+Func Terminate()
+    Exit
+EndFunc   ;==>Terminate
+
+Case $Button1
+   $Labelstatus = GUICtrlCreateLabel("5", 40, 0, 89, 25)
+   Sleep(500)
+   $Labelstatus = GUICtrlCreateLabel("4", 40, 0, 89, 25)
+   Sleep(500)
+   $Labelstatus = GUICtrlCreateLabel("3", 40, 0, 89, 25)
+   Sleep(500)
+   $Labelstatus = GUICtrlCreateLabel("2", 40, 0, 89, 25)
+   Sleep(500)
+   $Labelstatus = GUICtrlCreateLabel("1", 40, 0, 89, 25)
+   Sleep(500)
+   $Labelstatus = GUICtrlCreateLabel("Übertrage", 40, 0, 89, 25)
+   Manipulate()
+
+
+   EndSwitch
+   WEnd
