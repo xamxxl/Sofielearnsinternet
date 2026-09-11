@@ -7,7 +7,7 @@
 #define SAMPLE_BITS I2S_BITS_PER_SAMPLE_16BIT
 #define CHANNELS 1
 #define BUFFER_SIZE 1024
-#define NOISE_THRESHOLD_DB 50.0
+float noiseThresholdDb = 50.0;
 #define LOG_INTERVAL_MS 1000
 
 enum AppState {
@@ -322,7 +322,7 @@ void showLoggingScreen() {
   M5.Display.setTextSize(1);
   M5.Display.setCursor(10, 60);
   M5.Display.print("Threshold: ");
-  M5.Display.print(NOISE_THRESHOLD_DB);
+  M5.Display.print(noiseThresholdDb);
   M5.Display.print(" dB");
   
   M5.Display.setCursor(10, 80);
@@ -342,7 +342,7 @@ void handleLogging() {
   M5.Display.setCursor(10, 130);
   M5.Display.printf("Current: %.1f dB", currentDb);
   
-  if (currentDb > NOISE_THRESHOLD_DB) {
+  if (currentDb > noiseThresholdDb) {
     M5.Display.fillRect(10, 160, 220, 40, TFT_RED);
     M5.Display.setTextColor(TFT_WHITE);
     M5.Display.setCursor(20, 170);
@@ -398,16 +398,16 @@ void logNoiseEvent() {
 }
 
 void adjustThreshold(float delta) {
-  NOISE_THRESHOLD_DB += delta;
-  if (NOISE_THRESHOLD_DB < 30.0) NOISE_THRESHOLD_DB = 30.0;
-  if (NOISE_THRESHOLD_DB > 100.0) NOISE_THRESHOLD_DB = 100.0;
+  noiseThresholdDb += delta;
+  if (noiseThresholdDb < 30.0) noiseThresholdDb = 30.0;
+  if (noiseThresholdDb > 100.0) noiseThresholdDb = 100.0;
   
   M5.Display.fillRect(10, 60, 220, 20, TFT_BLACK);
   M5.Display.setTextSize(1);
   M5.Display.setTextColor(TFT_WHITE);
   M5.Display.setCursor(10, 60);
   M5.Display.print("Threshold: ");
-  M5.Display.print(NOISE_THRESHOLD_DB, 1);
+  M5.Display.print(noiseThresholdDb, 1);
   M5.Display.print(" dB");
 }
 
@@ -445,7 +445,7 @@ void adjustThresholdInteractive() {
     M5.Display.setTextColor(TFT_YELLOW);
     M5.Display.fillRect(10, 160, 220, 50, TFT_BLACK);
     M5.Display.setCursor(50, 170);
-    M5.Display.printf("%.1f dB", NOISE_THRESHOLD_DB);
+    M5.Display.printf("%.1f dB", noiseThresholdDb);
     
     delay(50);
   }

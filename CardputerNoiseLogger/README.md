@@ -73,9 +73,9 @@ Timestamp,dB
 
 ## Calibration
 
-The microphone reading includes a +94 dB offset (standard reference). Adjust `NOISE_THRESHOLD_DB` in code if needed:
+The microphone reading includes a +94 dB offset (standard reference). Adjust `noiseThresholdDb` in code if needed:
 ```cpp
-#define NOISE_THRESHOLD_DB 50.0
+float noiseThresholdDb = 50.0;
 ```
 
 ## Troubleshooting
