@@ -34,15 +34,19 @@ char serialBuffer[32];
 int serialBufferIndex = 0;
 
 void setup() {
-  auto cfg = M5.config();
-  M5.begin(cfg);
+  M5.begin();
   
   Serial.begin(115200);
-  while (!Serial && millis() < 3000) delay(10);
   
-  M5.Display.setRotation(1);
+  M5.Display.setRotation(0);
+  M5.Display.setBrightness(100);
   M5.Display.setTextSize(2);
   M5.Display.fillScreen(TFT_BLACK);
+  M5.Display.setTextColor(TFT_GREEN);
+  M5.Display.setCursor(10, 10);
+  M5.Display.print("Cardputer");
+  M5.Display.setCursor(10, 40);
+  M5.Display.print("Booting...");
   
   initSDCard();
   initMicrophone();
