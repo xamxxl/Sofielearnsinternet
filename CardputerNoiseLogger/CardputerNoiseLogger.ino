@@ -30,9 +30,15 @@ unsigned long lastLogTime = 0;
 int16_t audioBuffer[BUFFER_SIZE];
 float currentDb = 0.0;
 
+char serialBuffer[32];
+int serialBufferIndex = 0;
+
 void setup() {
   auto cfg = M5.config();
   M5.begin(cfg);
+  
+  Serial.begin(115200);
+  while (!Serial && millis() < 3000) delay(10);
   
   M5.Display.setRotation(1);
   M5.Display.setTextSize(2);
@@ -45,6 +51,7 @@ void setup() {
 
 void loop() {
   M5.update();
+  handleSerialInput();
   
   switch (currentState) {
     case STATE_START_SCREEN:
@@ -61,6 +68,92 @@ void loop() {
   delay(10);
 }
 
+void handleSerialInput() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (serialBufferIndex > 0) {
+        serialBuffer[serialBufferIndex] = '\0';
+        processSerialCommand(serialBuffer);
+        serialBufferIndex = 0;
+      }
+    } else if (serialBufferIndex < 31) {
+      serialBuffer[serialBufferIndex++] = c;
+    }
+  }
+}
+
+void processSerialCommand(const char* cmd) {
+  if (strcmp(cmd, "s") == 0 || strcmp(cmd, "S") == 0) {
+    if (currentState == STATE_START_SCREEN) {
+      currentState = STATE_TIME_MENU;
+      timeMenuSelection = 0;
+      drawTimeMenu();
+    } else if (currentState == STATE_TIME_MENU) {
+      if (sdCardReady) {
+        startLogging();
+      } else {
+        M5.Display.fillScreen(TFT_RED);
+        M5.Display.setTextColor(TFT_WHITE);
+        M5.Display.setTextSize(2);
+        M5.Display.setCursor(10, 100);
+        M5.Display.print("SD Card Required!");
+        delay(2000);
+        drawTimeMenu();
+      }
+    }
+  } else if (strcmp(cmd, "p") == 0 || strcmp(cmd, "P") == 0) {
+    if (currentState == STATE_LOGGING) {
+      stopLogging();
+    }
+  } else if (strcmp(cmd, "u") == 0 || strcmp(cmd, "U") == 0) {
+    if (currentState == STATE_TIME_MENU) {
+      timeMenuSelection = (timeMenuSelection - 1 + 6) % 6;
+      drawTimeMenu();
+    }
+  } else if (strcmp(cmd, "d") == 0 || strcmp(cmd, "D") == 0) {
+    if (currentState == STATE_TIME_MENU) {
+      timeMenuSelection = (timeMenuSelection + 1) % 6;
+      drawTimeMenu();
+    }
+  } else if (strcmp(cmd, "l") == 0 || strcmp(cmd, "L") == 0) {
+    if (currentState == STATE_TIME_MENU) {
+      timeValues[timeMenuSelection]--;
+      if (timeValues[timeMenuSelection] < timeMinValues[timeMenuSelection]) {
+        timeValues[timeMenuSelection] = timeMaxValues[timeMenuSelection];
+      }
+      if (timeMenuSelection == 1) {
+        timeMaxValues[2] = getDaysInMonth(timeValues[0], timeValues[1]);
+      }
+      drawTimeMenu();
+    } else if (currentState == STATE_LOGGING) {
+      adjustThreshold(-1.0);
+    }
+  } else if (strcmp(cmd, "r") == 0 || strcmp(cmd, "R") == 0) {
+    if (currentState == STATE_TIME_MENU) {
+      timeValues[timeMenuSelection]++;
+      if (timeValues[timeMenuSelection] > timeMaxValues[timeMenuSelection]) {
+        timeValues[timeMenuSelection] = timeMinValues[timeMenuSelection];
+      }
+      if (timeMenuSelection == 1) {
+        timeMaxValues[2] = getDaysInMonth(timeValues[0], timeValues[1]);
+      }
+      drawTimeMenu();
+    } else if (currentState == STATE_LOGGING) {
+      adjustThreshold(1.0);
+    }
+  } else if (strcmp(cmd, "a") == 0 || strcmp(cmd, "A") == 0) {
+    if (currentState == STATE_TIME_MENU) {
+      setSystemTime();
+      drawTimeMenu();
+    }
+  } else if (strcmp(cmd, "t") == 0 || strcmp(cmd, "T") == 0) {
+    if (currentState == STATE_LOGGING) {
+      adjustThresholdInteractive();
+    }
+  }
+}
+
 void showStartScreen() {
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextColor(TFT_WHITE);
@@ -73,7 +166,7 @@ void showStartScreen() {
   M5.Display.setTextSize(1);
   M5.Display.setTextColor(TFT_GREEN);
   M5.Display.setCursor(10, 140);
-  M5.Display.print("Press any key to continue...");
+  M5.Display.print("Press 's' to continue...");
   
   M5.Display.setTextColor(TFT_YELLOW);
   M5.Display.setCursor(10, 160);
@@ -88,12 +181,7 @@ void showStartScreen() {
 }
 
 void handleStartScreen() {
-  if (M5.BtnA.wasPressed() || M5.BtnB.wasPressed() || M5.BtnC.wasPressed() || 
-      M5.BtnP.wasPressed() || M5.BtnL.wasPressed() || M5.BtnR.wasPressed()) {
-    currentState = STATE_TIME_MENU;
-    timeMenuSelection = 0;
-    drawTimeMenu();
-  }
+  // Handled via serial command 's'
 }
 
 void drawTimeMenu() {
@@ -105,14 +193,16 @@ void drawTimeMenu() {
   
   M5.Display.setTextSize(1);
   M5.Display.setCursor(10, 40);
-  M5.Display.print("Use UP/DOWN to select");
+  M5.Display.print("u/d: Select field");
   M5.Display.setCursor(10, 55);
-  M5.Display.print("LEFT/RIGHT to change");
+  M5.Display.print("l/r: Change value");
   M5.Display.setCursor(10, 70);
-  M5.Display.print("BTN_A to confirm");
+  M5.Display.print("a: Confirm time");
+  M5.Display.setCursor(10, 85);
+  M5.Display.print("s: Start logging");
   
   for (int i = 0; i < 6; i++) {
-    int y = 100 + i * 20;
+    int y = 110 + i * 20;
     if (i == timeMenuSelection) {
       M5.Display.setTextColor(TFT_BLACK, TFT_WHITE);
     } else {
@@ -121,56 +211,10 @@ void drawTimeMenu() {
     M5.Display.setCursor(10, y);
     M5.Display.printf("%s: %02d", timeLabels[i], timeValues[i]);
   }
-  
-  M5.Display.setTextColor(TFT_GREEN);
-  M5.Display.setCursor(10, 230);
-  M5.Display.print("BTN_B: Start Logging");
 }
 
 void handleTimeMenu() {
-  if (M5.BtnL.wasPressed() || M5.BtnR.wasPressed()) {
-    int dir = M5.BtnL.wasPressed() ? -1 : 1;
-    timeValues[timeMenuSelection] += dir;
-    if (timeValues[timeMenuSelection] > timeMaxValues[timeMenuSelection]) {
-      timeValues[timeMenuSelection] = timeMinValues[timeMenuSelection];
-    }
-    if (timeValues[timeMenuSelection] < timeMinValues[timeMenuSelection]) {
-      timeValues[timeMenuSelection] = timeMaxValues[timeMenuSelection];
-    }
-    if (timeMenuSelection == 1) {
-      timeMaxValues[2] = getDaysInMonth(timeValues[0], timeValues[1]);
-    }
-    drawTimeMenu();
-  }
-  
-  if (M5.BtnU.wasPressed()) {
-    timeMenuSelection = (timeMenuSelection - 1 + 6) % 6;
-    drawTimeMenu();
-  }
-  
-  if (M5.BtnD.wasPressed()) {
-    timeMenuSelection = (timeMenuSelection + 1) % 6;
-    drawTimeMenu();
-  }
-  
-  if (M5.BtnA.wasPressed()) {
-    setSystemTime();
-    drawTimeMenu();
-  }
-  
-  if (M5.BtnB.wasPressed()) {
-    if (sdCardReady) {
-      startLogging();
-    } else {
-      M5.Display.fillScreen(TFT_RED);
-      M5.Display.setTextColor(TFT_WHITE);
-      M5.Display.setTextSize(2);
-      M5.Display.setCursor(10, 100);
-      M5.Display.print("SD Card Required!");
-      delay(2000);
-      drawTimeMenu();
-    }
-  }
+  // Handled via serial commands
 }
 
 void setSystemTime() {
@@ -282,9 +326,11 @@ void showLoggingScreen() {
   M5.Display.print(" dB");
   
   M5.Display.setCursor(10, 80);
-  M5.Display.print("BTN_A: Stop");
-  M5.Display.setCursor(10, 100);
-  M5.Display.print("BTN_B: Adjust Threshold");
+  M5.Display.print("p: Pause/Stop");
+  M5.Display.setCursor(10, 95);
+  M5.Display.print("t: Adjust Threshold");
+  M5.Display.setCursor(10, 110);
+  M5.Display.print("l/r: Change Threshold");
 }
 
 void handleLogging() {
@@ -307,14 +353,6 @@ void handleLogging() {
     M5.Display.setTextColor(TFT_BLACK);
     M5.Display.setCursor(20, 170);
     M5.Display.print("Quiet");
-  }
-  
-  if (M5.BtnA.wasPressed()) {
-    stopLogging();
-  }
-  
-  if (M5.BtnB.wasPressed()) {
-    adjustThreshold();
   }
 }
 
@@ -359,7 +397,21 @@ void logNoiseEvent() {
   logFile.flush();
 }
 
-void adjustThreshold() {
+void adjustThreshold(float delta) {
+  NOISE_THRESHOLD_DB += delta;
+  if (NOISE_THRESHOLD_DB < 30.0) NOISE_THRESHOLD_DB = 30.0;
+  if (NOISE_THRESHOLD_DB > 100.0) NOISE_THRESHOLD_DB = 100.0;
+  
+  M5.Display.fillRect(10, 60, 220, 20, TFT_BLACK);
+  M5.Display.setTextSize(1);
+  M5.Display.setTextColor(TFT_WHITE);
+  M5.Display.setCursor(10, 60);
+  M5.Display.print("Threshold: ");
+  M5.Display.print(NOISE_THRESHOLD_DB, 1);
+  M5.Display.print(" dB");
+}
+
+void adjustThresholdInteractive() {
   M5.Display.fillScreen(TFT_BLACK);
   M5.Display.setTextSize(2);
   M5.Display.setTextColor(TFT_WHITE);
@@ -368,33 +420,32 @@ void adjustThreshold() {
   
   M5.Display.setTextSize(1);
   M5.Display.setCursor(10, 100);
-  M5.Display.print("LEFT/RIGHT: Change");
+  M5.Display.print("l/r: Change");
   M5.Display.setCursor(10, 120);
-  M5.Display.print("BTN_A: Confirm");
+  M5.Display.print("a: Confirm");
   
-  float tempThreshold = NOISE_THRESHOLD_DB;
   bool adjusting = true;
   
   while (adjusting) {
     M5.update();
+    handleSerialInput();
+    
+    if (Serial.available()) {
+      char c = Serial.read();
+      if (c == 'a' || c == 'A') {
+        adjusting = false;
+      } else if (c == 'l' || c == 'L') {
+        adjustThreshold(-1.0);
+      } else if (c == 'r' || c == 'R') {
+        adjustThreshold(1.0);
+      }
+    }
     
     M5.Display.setTextSize(3);
     M5.Display.setTextColor(TFT_YELLOW);
     M5.Display.fillRect(10, 160, 220, 50, TFT_BLACK);
     M5.Display.setCursor(50, 170);
-    M5.Display.printf("%.1f dB", tempThreshold);
-    
-    if (M5.BtnL.wasPressed()) {
-      tempThreshold -= 1.0;
-      if (tempThreshold < 30.0) tempThreshold = 30.0;
-    }
-    if (M5.BtnR.wasPressed()) {
-      tempThreshold += 1.0;
-      if (tempThreshold > 100.0) tempThreshold = 100.0;
-    }
-    if (M5.BtnA.wasPressed()) {
-      adjusting = false;
-    }
+    M5.Display.printf("%.1f dB", NOISE_THRESHOLD_DB);
     
     delay(50);
   }
